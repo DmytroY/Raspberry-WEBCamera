@@ -4,12 +4,16 @@ import cv2
 
 app = Flask(__name__)
 camera = Picamera2()
-camera.configure(camera.create_video_configuration(main={"size": (640, 480)}))
+#camera.configure(camera.create_video_configuration(main={"size": (640, 480)}))
+camera.configure(camera.create_video_configuration())
+
 camera.start()
 
 def generate():
     while True:
         frame = camera.capture_array()
+        #rotate 180 if needed
+        frame = cv2.rotate(frame, cv2.ROTATE_180)
         ret, buffer = cv2.imencode('.jpg', frame)
         if not ret:
             continue
