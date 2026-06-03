@@ -1,20 +1,41 @@
+import time
 from flask import Flask, Response
 from picamera2 import Picamera2
 import cv2
 
 app = Flask(__name__)
 camera = Picamera2()
-#camera.configure(camera.create_video_configuration(main={"size": (640, 480)}))
-camera.configure(camera.create_video_configuration())
 
+# config = camera.create_video_configuration()
+
+# reduce resolution to save resourses (320x240, 480 x 460, 640x480)
+config = camera.create_video_configuration(main={"size": (320, 240)})
+
+# flip with camera settings if needed. it's consumes less resourses
+# compare to rotating by OpenCV later..
+# config["transform"] = libcamera.Transform(hflip=1, vflip=1)
+camera.configure(config)
 camera.start()
 
 def generate():
+    last_frame_time = 0
     while True:
+        # limit  FPS to save rosourses
+        current_time = time.time()
+        if current_time - last_frame_time < 0.067:   #15 fps
+            time.sleep(0.01)
+            continue
+        last_frame_time = current_time
         frame = camera.capture_array()
-        #rotate 180 if needed
-        frame = cv2.rotate(frame, cv2.ROTATE_180)
-        ret, buffer = cv2.imencode('.jpg', frame)
+
+        # Camera captures in BRG - convert to RGB as standard for jpeg 
+        frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
+
+        # rotation with openCV. flexible but resource consuming
+        # frame = cv2.rotate(frame, cv2.ROTATE_180)
+
+	# jpeg quality 70% for save resourses
+        ret, buffer = cv2.imencode('.jpg', frame, [cv2.IMWRITE_JPEG_QUALITY, 70])
         if not ret:
             continue
         yield (b'--frame\r\n'
