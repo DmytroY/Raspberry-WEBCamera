@@ -1,5 +1,5 @@
 import time
-from flask import Flask, Response
+from flask import Flask, Response, render_template_string
 from picamera2 import Picamera2
 import cv2
 import threading
@@ -91,11 +91,9 @@ def generate():
                     b'Content-Type: image/jpg\r\n\r\n' + frame_data + b'\r\n')
             except Empty:
                 continue
-            except GeneratorExit:
-                break
-            except Exception as e:
-                print(f"Error in generate: {e}")
-                break           
+    except (GeneratorExit, ConnectionResetError):
+        # Explicitly catch connection resets from browser drops
+        pass       
     finally:
         # Unregister this client
         with lock:
@@ -128,8 +126,26 @@ def broadcast_frame_func():
                 pass  # Queue full, skip this client
 
 
+# @app.route('/')
+# def index():
+#     return Response(generate(), mimetype='multipart/x-mixed-replace; boundary=frame')
+
 @app.route('/')
 def index():
+    # Serves a lightweight HTML wrapper immediately, preventing browser page stall
+    return render_template_string("""
+        <html>
+          <head><title>Pi Camera</title></head>
+          <body>
+            <h1>Camera Stream</h1>
+            <img src="{{ url_for('video_feed') }}" width="640" height="360" />
+          </body>
+        </html>
+    """)
+
+@app.route('/video_feed')
+def video_feed():
+    # The infinite loop stream is isolated to the image asset request
     return Response(generate(), mimetype='multipart/x-mixed-replace; boundary=frame')
 
 
