@@ -42,14 +42,14 @@ def camera_thread_func():
             # Non-blocking push to YOLO thread; drops frame if YOLO is still busy
             try:
                 raw_frame_queue.put_nowait(frame)
-            except Empty:
+            except:
                 pass
                 
         except Exception as e:
             print(f"Capture error: {e}")
             
-        # Maintain ~8 FPS capture rate limit
-        delay = 0.12 - (time.time() - start_time)
+        # Maintain ~1 FPS capture rate limit
+        delay = 1 - (time.time() - start_time)
         if delay > 0:
             time.sleep(delay)
 
