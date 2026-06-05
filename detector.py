@@ -34,6 +34,10 @@ def camera_thread_func():
         
         try:
             frame = camera.capture_array()
+
+            # If the image has 4 channels (BGRA/XBGR), slice it to 3 channels (BGR)
+            if frame.shape[2] == 4:
+                frame = frame[:, :, :3]
             
             # Non-blocking push to YOLO thread; drops frame if YOLO is still busy
             try:
