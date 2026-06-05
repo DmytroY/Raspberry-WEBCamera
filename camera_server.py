@@ -10,7 +10,7 @@ from collections import deque
 app = Flask(__name__)
 camera = Picamera2()
 
-config = camera.create_video_configuration(main={"size": (1280, 720), "format": "BGR888"}) 
+config = camera.create_video_configuration(main={"size": (1280, 720), "format": "RGB888"}) 
 # config["transform"] = libcamera.Transform(hflip=1, vflip=1)
 camera.configure(config)
 
