@@ -10,7 +10,7 @@ from ultralytics import YOLO
 app = Flask(__name__)
 camera = Picamera2()
 
-config = camera.create_video_configuration(main={"size": (640, 360)}) 
+config = camera.create_video_configuration(main={"size": (640, 360), "format": "BGR888"}) 
 camera.configure(config)
 
 model = YOLO("yolov5n.pt")
