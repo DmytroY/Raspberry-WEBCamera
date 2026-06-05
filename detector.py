@@ -7,132 +7,129 @@ from queue import Queue, Empty
 from collections import deque
 from ultralytics import YOLO
 
-
 app = Flask(__name__)
 camera = Picamera2()
 
 config = camera.create_video_configuration(main={"size": (640, 360)}) 
-# config["transform"] = libcamera.Transform(hflip=1, vflip=1)
 camera.configure(config)
 
 model = YOLO("yolov5n.pt")
-
 object_counts = {}
 
 active_connections = 0
 lock = threading.Lock()
-current_frame = None
+
+# Thread communication variables
+raw_frame_queue = Queue(maxsize=1)       # Passes raw frames to YOLO thread
+encoded_frame_pool = {"bytes": None}     # Stores the latest processed JPEG
 frame_ready = threading.Event()
 camera_active = threading.Event()
 client_queues = deque()
 
-
 def camera_thread_func():
-    """Background thread that captures frames once and broadcasts to all clients"""
-    global current_frame
-    global object_counts
-    last_frame_time = 0
-
-
+    """Background thread: Captures frames at a constant rate without waiting for YOLO"""
     while True:
-        # Blocks thread until at least one client connects
         camera_active.wait()
-
-        current_time = time.time()
-        if current_time - last_frame_time < 0.12:   #8 fps
-            time.sleep(0.02)
-            continue
-        last_frame_time = current_time
-
+        start_time = time.time()
+        
         try:
             frame = camera.capture_array()
-            # camera format is BRG, to RGB convertion needed
-            frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
+            
+            # Non-blocking push to YOLO thread; drops frame if YOLO is still busy
+            try:
+                raw_frame_queue.put_nowait(frame)
+            except Empty:
+                pass
+                
+        except Exception as e:
+            print(f"Capture error: {e}")
+            
+        # Maintain ~8 FPS capture rate limit
+        delay = 0.12 - (time.time() - start_time)
+        if delay > 0:
+            time.sleep(delay)
 
-            # detection and auto-annotation
+def yolo_worker_func():
+    """Background thread: Processes the latest available frame from the queue"""
+    global object_counts
+    while True:
+        frame = raw_frame_queue.get()  # Blocks until a new frame arrives
+        try:
             results = model(frame)[0]
+            
             for box in results.boxes:
                 cls_id = int(box.cls[0])
                 label = model.names[cls_id]
-                object_counts[label] = object_counts.get(label, 0) + 1
-            
-            # results.plot() returns a image with boxes drawn
-            annotated_frame = results.plot()
-
-            ret, buffer = cv2.imencode('.jpg', fannotated_frame, [cv2.IMWRITE_JPEG_QUALITY, 60])
-            if ret:
                 with lock:
-                    current_frame = buffer.tobytes()
-                    frame_ready.set()
+                    object_counts[label] = object_counts.get(label, 0) + 1
+            
+            annotated_frame = results.plot()
+            ret, buffer = cv2.imencode('.jpg', annotated_frame, [cv2.IMWRITE_JPEG_QUALITY, 60])
+            
+            if ret:
+                frame_bytes = buffer.tobytes()
+                with lock:
+                    encoded_frame_pool["bytes"] = frame_bytes
+                frame_ready.set()
+                
         except Exception as e:
-            print(f"Error capturing frame: {e}")
-            time.sleep(0.1)
+            print(f"YOLO error: {e}")
+
+def broadcast_thread_func():
+    """Background thread: Distributes available processed frames to clients"""
+    while True:
+        frame_ready.wait()
+        frame_ready.clear()
+        
+        with lock:
+            frame_to_send = encoded_frame_pool["bytes"]
+            queues_to_update = list(client_queues)
+            
+        for q in queues_to_update:
+            try:
+                q.put_nowait(frame_to_send)
+            except:
+                pass
 
 def generate():
     """Generator for streaming frames to individual clients"""
     global active_connections, client_queues
 
-    # register the client
     client_queue = Queue(maxsize=1)
     with lock:
         active_connections += 1
         client_queues.append(client_queue)
         if active_connections == 1:
             camera.start()
+            camera_active.set()
     try:
         while True:
             try:
-                # Wait for frame with timeout to allow graceful shutdown
-                frame_data = client_queue.get(timeout=2)
-                if frame_data is None:  # Shutdown signal
+                frame_data = client_queue.get(timeout=1.0)
+                if frame_data is None:
                     break
-
                 yield (b'--frame\r\n'
-                    b'Content-Type: image/jpg\r\n\r\n' + frame_data + b'\r\n')
+                       b'Content-Type: image/jpeg\r\n\r\n' + frame_data + b'\r\n')
             except Empty:
                 continue
     except (GeneratorExit, ConnectionResetError):
-        # Explicitly catch connection resets from browser drops
-        pass       
+        pass
     finally:
-        # Unregister this client
         with lock:
             active_connections -= 1
-            try:
+            if client_queue in client_queues:
                 client_queues.remove(client_queue)
-            except(ValueError, KeyError):
-                pass
-            if active_connections == 0: # when last client disconnects
-                camera_active.clear()  # Stop background thread execution
-                camera.stop()  # Stop camera
-
-def broadcast_frame_func():
-    """Broadcast current frame to all connected clients"""
-    global current_frame, client_queues
-
-    while True:
-        frame_ready.wait()  # Wait for new frame
-        frame_ready.clear()
-
-        with lock:
-            frame_to_send = current_frame
-            queues_to_update = list(client_queues)
-
-        # Send to all clients (non-blocking, drop old frames if queue full)
-        for q in queues_to_update:
-            try:
-                q.put_nowait(frame_to_send)
-            except:
-                pass  # Queue full, skip this client
-
-
-# @app.route('/')
-# def index():
-#     return Response(generate(), mimetype='multipart/x-mixed-replace; boundary=frame')
+            if active_connections == 0:
+                camera_active.clear()
+                # Flush raw queue to unblock worker if waiting
+                try:
+                    raw_frame_queue.get_nowait()
+                except:
+                    pass
+                camera.stop()
 
 @app.route('/')
 def index():
-    # Serves a lightweight HTML wrapper immediately, preventing browser page stall
     return render_template_string("""
         <html>
           <head><title>Pi Camera</title></head>
@@ -145,14 +142,12 @@ def index():
 
 @app.route('/video_feed')
 def video_feed():
-    # The infinite loop stream is isolated to the image asset request
     return Response(generate(), mimetype='multipart/x-mixed-replace; boundary=frame')
 
-
-if __name__== '__main__':
-    # Start background threads
-    camera_capture_thread = threading.Thread(target=camera_thread_func, daemon=True)
-    camera_capture_thread.start()
-    broadcast_thread = threading.Thread(target=broadcast_frame_func, daemon=True)
-    broadcast_thread.start()
+if __name__ == '__main__':
+    # Initialize and run threads
+    threading.Thread(target=camera_thread_func, daemon=True).start()
+    threading.Thread(target=yolo_worker_func, daemon=True).start()
+    threading.Thread(target=broadcast_thread_func, daemon=True).start()
+    
     app.run(host='0.0.0.0', port=5000, threaded=True)
