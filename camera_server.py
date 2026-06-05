@@ -29,7 +29,7 @@ def camera_thread_func():
 
     while True:
         current_time = time.time()
-        if current_time - last_frame_time < 0.1:   #10 fps
+        if current_time - last_frame_time < 0.12:   #8 fps
             time.sleep(0.02)
             continue
             
@@ -37,8 +37,9 @@ def camera_thread_func():
 
         try:
             frame = camera.capture_array()
+            # camera format is BRG, to RGB convertion needed
             frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
-            ret, buffer = cv2.imencode('.jpg', frame, [cv2.IMWRITE_JPEG_QUALITY, 70])
+            ret, buffer = cv2.imencode('.jpg', frame, [cv2.IMWRITE_JPEG_QUALITY, 60])
             if ret:
                 with lock:
                     current_frame = buffer.tobytes()
