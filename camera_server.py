@@ -10,7 +10,7 @@ from collections import deque
 app = Flask(__name__)
 camera = Picamera2()
 
-config = camera.create_video_configuration(main={"size": (1280, 720)}) 
+config = camera.create_video_configuration(main={"size": (1280, 720), "format": "BGR888"}) 
 # config["transform"] = libcamera.Transform(hflip=1, vflip=1)
 camera.configure(config)
 
@@ -38,7 +38,7 @@ def camera_thread_func():
         try:
             frame = camera.capture_array()
             # camera format is BRG, to RGB convertion needed
-            frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
+            # frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
             ret, buffer = cv2.imencode('.jpg', frame, [cv2.IMWRITE_JPEG_QUALITY, 60])
             if ret:
                 with lock:
