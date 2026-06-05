@@ -11,7 +11,6 @@ from ultralytics import YOLO
 app = Flask(__name__)
 camera = Picamera2()
 
-# config = camera.create_video_configuration(main={"size": (1280, 720)}) 
 config = camera.create_video_configuration(main={"size": (640, 360)}) 
 # config["transform"] = libcamera.Transform(hflip=1, vflip=1)
 camera.configure(config)
@@ -24,6 +23,7 @@ active_connections = 0
 lock = threading.Lock()
 current_frame = None
 frame_ready = threading.Event()
+camera_active = threading.Event()
 client_queues = deque()
 
 
@@ -35,11 +35,13 @@ def camera_thread_func():
 
 
     while True:
+        # Blocks thread until at least one client connects
+        camera_active.wait()
+
         current_time = time.time()
         if current_time - last_frame_time < 0.12:   #8 fps
             time.sleep(0.02)
             continue
-            
         last_frame_time = current_time
 
         try:
@@ -47,16 +49,17 @@ def camera_thread_func():
             # camera format is BRG, to RGB convertion needed
             frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
 
-            # detection
-            results = model(frame)
-            detections = results.xyxy[0]
-            for det in detections:
-                label = results.names[int(det[5])]
+            # detection and auto-annotation
+            results = model(frame)[0]
+            for box in results.boxes:
+                cls_id = int(box.cls[0])
+                label = model.names[cls_id]
                 object_counts[label] = object_counts.get(label, 0) + 1
-            # Draw bboxes
-            frame = cv2.cvtColor(results.render()[0], cv2.COLOR_RGB2BGR)
+            
+            # results.plot() returns a image with boxes drawn
+            annotated_frame = results.plot()
 
-            ret, buffer = cv2.imencode('.jpg', frame, [cv2.IMWRITE_JPEG_QUALITY, 60])
+            ret, buffer = cv2.imencode('.jpg', fannotated_frame, [cv2.IMWRITE_JPEG_QUALITY, 60])
             if ret:
                 with lock:
                     current_frame = buffer.tobytes()
@@ -101,8 +104,9 @@ def generate():
                 client_queues.remove(client_queue)
             except(ValueError, KeyError):
                 pass
-            if active_connections == 0:
-                camera.stop()  # Stop camera when last client disconnects
+            if active_connections == 0: # when last client disconnects
+                camera_active.clear()  # Stop background thread execution
+                camera.stop()  # Stop camera
 
 def broadcast_frame_func():
     """Broadcast current frame to all connected clients"""

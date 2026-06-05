@@ -271,3 +271,7 @@ now you can see camera striming not only in local network on http://192.168.100.
 
 ![ngrok](img/ngrok-cam1.JPG "ngrok")
 ![ngrok](img/ngrok-cam2.JPG "ngrok")
+
+## Object detection
+ultralytics is cloded from here https://github.com/ultralytics/ultralytics.git .
+also do `sudo apt install python3-opencv python3-torch python3-torchvision python3-matplotlib`
