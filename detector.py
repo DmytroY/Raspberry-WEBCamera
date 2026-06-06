@@ -10,7 +10,7 @@ from ultralytics import YOLO
 app = Flask(__name__)
 camera = Picamera2()
 
-config = camera.create_video_configuration(main={"size": (640, 360), "format": "RGB888"}) 
+config = camera.create_video_configuration(main={"size": (1280, 720), "format": "RGB888"}) 
 camera.configure(config)
 
 # model = YOLO("yolov5n.pt")
@@ -60,7 +60,9 @@ def yolo_worker_func():
     while True:
         frame = raw_frame_queue.get()  # Blocks until a new frame arrives
         try:
-            results = model(frame)[0]
+
+            # detection for 0 = person, 1 = bicycle, 2 = car, 3 = motorcycle, 16 =dog, 25 = umbrella
+            results = model(frame, classes=[0, 1, 2, 3, 16, 25], imgsz=320)[0]
             
             for box in results.boxes:
                 cls_id = int(box.cls[0])

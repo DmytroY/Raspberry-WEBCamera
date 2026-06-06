@@ -282,4 +282,8 @@ Rerequisites:
 pip install ultralytics ncnn
 python -c "from ultralytics import YOLO; model = YOLO('yolov5n.pt'); model.export(format='ncnn', imgsz=320)"
 ```
-than I have copied *yolov5n_ncnn_model* folder to this repo, now `model = YOLO("yolov5n_ncnn_model")` can be used in the script.
+than I have copied *yolov5n_ncnn_model* folder to this repo, now `model = YOLO("yolov5n_ncnn_model")` can be used in the *detector.py* script.
+```
+python detector.py
+```
+![detected](img/detected2.JPG "detected")
