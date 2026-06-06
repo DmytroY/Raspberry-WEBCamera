@@ -11,11 +11,11 @@ app = Flask(__name__)
 camera = Picamera2()
 
 # config = camera.create_video_configuration(main={"size": (640, 640), "format": "RGB888"}) 
-config = camera.create_video_configuration(main={"size": (1080, 1080), "format": "RGB888"}) 
+config = camera.create_video_configuration(main={"size": (960, 960), "format": "RGB888"}) 
 camera.configure(config)
 
 # model = YOLO("yolov5n.pt")
-model = YOLO("yolov5nu_ncnn_model_1080")
+model = YOLO("yolov5nu_ncnn_model_960")
 object_counts = {}
 
 active_connections = 0
@@ -64,7 +64,7 @@ def yolo_worker_func():
 
             # detection classes: 0 = person, 1 = bicycle, 2 = car, 3 = motorcycle, 16 = dog, 25 = umbrella. 
             # For save resourses swith augmentaton off and process only objects with confidention score > 
-            results = model(frame, classes=[0, 2, 25], imgsz=1080, augment=True, conf=0.35)[0]
+            results = model(frame, classes=[0, 2, 25], imgsz=960, augment=True, conf=0.35)[0]
             
             for box in results.boxes:
                 cls_id = int(box.cls[0])
@@ -144,7 +144,7 @@ def index():
           <head><title>Pi Camera</title></head>
           <body>
             <h1>Camera Stream</h1>
-            <img src="{{ url_for('video_feed') }}" width="1080" height="1080" />
+            <img src="{{ url_for('video_feed') }}" width="960" height="960" />
           </body>
         </html>
     """)
