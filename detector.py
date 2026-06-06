@@ -10,7 +10,7 @@ from ultralytics import YOLO
 app = Flask(__name__)
 camera = Picamera2()
 
-config = camera.create_video_configuration(main={"size": (1280, 720), "format": "RGB888"}) 
+config = camera.create_video_configuration(main={"size": (640, 360), "format": "RGB888"}) 
 camera.configure(config)
 
 # model = YOLO("yolov5n.pt")
@@ -63,7 +63,7 @@ def yolo_worker_func():
 
             # detection classes: 0 = person, 1 = bicycle, 2 = car, 3 = motorcycle, 16 =dog, 25 = umbrella. 
             # For save resourses swith augmentaton off and process only objects with confidention score > 
-            results = model(frame, classes=[0, 1, 2, 3, 16, 25], imgsz=640, augment=True, conf=0.25)[0]
+            results = model(frame, classes=[0, 1, 2, 3, 16, 25], imgsz=640, augment=False, conf=0.3)[0]
             
             for box in results.boxes:
                 cls_id = int(box.cls[0])
@@ -72,7 +72,7 @@ def yolo_worker_func():
                     object_counts[label] = object_counts.get(label, 0) + 1
             
             annotated_frame = results.plot()
-            ret, buffer = cv2.imencode('.jpg', annotated_frame, [cv2.IMWRITE_JPEG_QUALITY, 60])
+            ret, buffer = cv2.imencode('.jpg', annotated_frame, [cv2.IMWRITE_JPEG_QUALITY, 55])
             
             if ret:
                 frame_bytes = buffer.tobytes()
@@ -143,7 +143,7 @@ def index():
           <head><title>Pi Camera</title></head>
           <body>
             <h1>Camera Stream</h1>
-            <img src="{{ url_for('video_feed') }}" width="1280" height="720" />
+            <img src="{{ url_for('video_feed') }}" width="640" height="360" />
           </body>
         </html>
     """)
