@@ -49,8 +49,8 @@ def camera_thread_func():
         except Exception as e:
             print(f"Capture error: {e}")
             
-        # Maintain ~1 FPS capture rate limit
-        delay = 1 - (time.time() - start_time)
+        # Maintain ~0.5 FPS capture rate limit
+        delay = 2 - (time.time() - start_time)
         if delay > 0:
             time.sleep(delay)
 
@@ -61,9 +61,9 @@ def yolo_worker_func():
         frame = raw_frame_queue.get()  # Blocks until a new frame arrives
         try:
 
-            # detection classes: 0 = person, 1 = bicycle, 2 = car, 3 = motorcycle, 16 =dog, 25 = umbrella. 
+            # detection classes: 0 = person, 1 = bicycle, 2 = car, 3 = motorcycle, 16 = dog, 25 = umbrella. 
             # For save resourses swith augmentaton off and process only objects with confidention score > 
-            results = model(frame, classes=[0, 1, 2, 3, 16, 25], imgsz=640, augment=False, conf=0.3)[0]
+            results = model(frame, classes=[0, 1, 2, 3, 16, 25], imgsz=640, augment=True, conf=0.35)[0]
             
             for box in results.boxes:
                 cls_id = int(box.cls[0])
