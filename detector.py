@@ -13,7 +13,8 @@ camera = Picamera2()
 config = camera.create_video_configuration(main={"size": (640, 360), "format": "RGB888"}) 
 camera.configure(config)
 
-model = YOLO("yolov5n.pt")
+# model = YOLO("yolov5n.pt")
+model = YOLO("yolov5n_ncnn_model")
 object_counts = {}
 
 active_connections = 0

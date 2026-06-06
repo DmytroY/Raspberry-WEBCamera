@@ -273,5 +273,13 @@ now you can see camera striming not only in local network on http://192.168.100.
 ![ngrok](img/ngrok-cam2.JPG "ngrok")
 
 ## Object detection
-ultralytics is cloded from here https://github.com/ultralytics/ultralytics.git .
-also do `sudo apt install python3-opencv python3-torch python3-torchvision python3-matplotlib`
+Rerequisites:
+
+* ultralytics is cloned from here https://github.com/ultralytics/ultralytics.git .
+
+* PyTorch model *yolov5nu.pt* can be used but is is too slow on RaspberryPi. I have converted it to ncnn model optimised for low resolution image size, on local PC :
+```
+pip install ultralytics ncnn
+python -c "from ultralytics import YOLO; model = YOLO('yolov5n.pt'); model.export(format='ncnn', imgsz=320)"
+```
+than I have copied *yolov5n_ncnn_model* folder to this repo, now `model = YOLO("yolov5n_ncnn_model")` can be used in the script.
