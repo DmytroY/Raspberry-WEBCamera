@@ -62,8 +62,8 @@ def yolo_worker_func():
         try:
 
             # detection classes: 0 = person, 1 = bicycle, 2 = car, 3 = motorcycle, 16 =dog, 25 = umbrella. 
-            # For save resourses swith augmentaton off and process only objects with confidention score > 0.3
-            results = model(frame, classes=[0, 1, 2, 3, 16, 25], imgsz=320, augment=False, conf=0.3)[0]
+            # For save resourses swith augmentaton off and process only objects with confidention score > 
+            results = model(frame, classes=[0, 1, 2, 3, 16, 25], imgsz=320, augment=False)[0]
             
             for box in results.boxes:
                 cls_id = int(box.cls[0])
