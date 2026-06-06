@@ -14,7 +14,7 @@ config = camera.create_video_configuration(main={"size": (1280, 720), "format": 
 camera.configure(config)
 
 # model = YOLO("yolov5n.pt")
-model = YOLO("yolov5nu_ncnn_model")
+model = YOLO("yolov5nu_ncnn_model_640")
 object_counts = {}
 
 active_connections = 0
@@ -63,7 +63,7 @@ def yolo_worker_func():
 
             # detection classes: 0 = person, 1 = bicycle, 2 = car, 3 = motorcycle, 16 =dog, 25 = umbrella. 
             # For save resourses swith augmentaton off and process only objects with confidention score > 
-            results = model(frame, classes=[0, 1, 2, 3, 16, 25], imgsz=320, augment=True, conf=0.25)[0]
+            results = model(frame, classes=[0, 1, 2, 3, 16, 25], imgsz=640, augment=True, conf=0.25)[0]
             
             for box in results.boxes:
                 cls_id = int(box.cls[0])
