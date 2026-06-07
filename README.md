@@ -304,7 +304,7 @@ Idea is compare curent frame and prevoius frame
 
 <img src="img/2_initial.jpg" alt="initial frames" width="600">
 
-but we should avoid triggering on small fast moving objects like trees leaves and changing of brithess. For this we will convert images to black and white and blure it
+but we should avoid triggering on small fast moving objects like trees leaves and changing of brigthess. For this we will convert images to black and white and blure it
 
 <img src="img/2_wb_blure.jpg" alt="BW_blured" width="600">
 
@@ -324,7 +324,7 @@ if distance between some boxes is relatively small persumably this is one object
 
 <img src="img/joined_boxes.jpg" alt="joined boxes" width="500">
 
-I plan to pass to object detection model only part of image where changes occured, but context ( area around object) significantly improves effisiency of object detection model, so I add some margine around area of interest
+I plan to pass to object detection model only part of image where changes occured, but context ( area around object) significantly improves efficiency of object detection model, so I add some margine around area of interest
 
 <img src="img/margin_box.jpg" alt="boxes with margin" width="500">
 
