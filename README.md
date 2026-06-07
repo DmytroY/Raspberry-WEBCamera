@@ -1,5 +1,6 @@
-# Raspberry-WEBCamera
-Raspberry based WEB camera with Flask 
+# Object detection with limited hardware
+
+Мета: Дослідити межу можливостей обробки візуальнолїї інформації на обмеженому залізі
 
 ## Hardware:
  - Raspberry PI zerro 2W
@@ -8,6 +9,7 @@ Raspberry based WEB camera with Flask
  - Monitor with micro HDMI adapter (only for initial setup)
  - other PC in the same local network
 
+# Web camera with tuneling to internet
 ## System setup
 1. GUI is not needed and I plan to use CLI via ssh, so instal [Raspberry Pi OS Lite](https://www.raspberrypi.com/software/operating-systems/)
 
@@ -25,18 +27,18 @@ sudo systemctl start ssh
 After succcessfull login via ssh we do not need monitor and keyboard connected to Raspberry Pi any more.
 
 ## Setup of remote connection from internet via ngrok
-1. Create [ngrok free account](https://dashboard.ngrok.com/signup), copy [authentication tocken](https://dashboard.ngrok.com/api-keys).
-2. Install ngrok agent on Raspberry PI:
+* Create [ngrok free account](https://dashboard.ngrok.com/signup), copy [authentication tocken](https://dashboard.ngrok.com/api-keys).
+* Install ngrok agent on Raspberry PI:
 ```
 wget https://bin.equinox.io/c/bNyj1mQVY4c/ngrok-stable-linux-arm64.tgz
 tar -xvzf ngrok-stable-linux-arm64.tgz
 sudo mv ngrok /usr/local/bin/
 ```
-3. Authenticate:
+* Authenticate:
 ```
 ngrok config add-authtoken <ngrok-auth-token>
 ```
-4. To check how it is works start tunnel mannualy:
+* To check how it is works start tunnel mannualy:
 ```
 ngrok tcp 22
 ```
@@ -48,7 +50,7 @@ ssh <user name>@<ngrok URL> -p <port>
  
 
 ## Auto start remote connection
-1. Create a systemd service file */etc/systemd/system/ngrok-all.service*
+* *Create a systemd service file */etc/systemd/system/ngrok-all.service*
 change *username* to your user:
 ```
 [Unit]
@@ -64,14 +66,14 @@ Restart=on-failure
 [Install]
 WantedBy=multi-user.target
 ```
-2. Enable the service
+* Enable the service
 ```
 sudo systemctl daemon-reexec
 sudo systemctl daemon-reload
 sudo systemctl enable ngrok-all.service
 sudo systemctl start ngrok-all.service
 ```
-3. Public SSH address can be seen by:
+* Public SSH address can be seen by:
 ```
 journalctl -u ngrok-all.service -n 50
 ```
@@ -83,7 +85,7 @@ Forwarding tcp://0.tcp.ngrok.io:14782 -> localhost:22
 ## Extract SSH address to file
 Every new start ngrok uses new address and port, but we need to know them to connect
 
-1. Abow in journalctl we saw how the address looks like. Let's write script to extract address and save it to file. Create script in */home/username/ngrok-log.sh* (change *username* to your user)
+* Abow in journalctl we saw how the address looks like. Let's write script to extract address and save it to file. Create script in */home/username/ngrok-log.sh* (change *username* to your user)
 ```
 #!/bin/bash
 
@@ -104,7 +106,7 @@ permition to execute:
 ```
 chmod +x /home/username/ngrok-log.sh
 ```
-2. Create system service file to run the script */etc/systemd/system/ngrok-log.service*
+* Create system service file to run the script */etc/systemd/system/ngrok-log.service*
 ```
 [Unit]
 Description=Save ngrok public SSH address to file
@@ -126,16 +128,16 @@ sudo systemctl daemon-reload
 sudo systemctl enable ngrok-log.service
 sudo systemctl start ngrok-log.service
 ```
-4. Do reboot and check tha t address have been saved to file"
+* Do reboot and check tha t address have been saved to file"
 ```
 cat ~/ngrok-ssh.txt
 ```
 
 ## Send SSH address to telegram bot
-1. Create a Telegram Bot: 
+* Create a Telegram Bot: 
 in Telegram search for @BotFather, write to the chat `/newbot`, create bot by following the prompt, receive and save telegram bot token. it looks like "123456789:ABCdefGhIJKlmNoPQrstuvWxyZ"
-2. In Telegram find and open chat with hew bot, send something, for example "Hi!"
-3. Check bot API. From Raspberry Pi send (put correct token there)
+* In Telegram find and open chat with hew bot, send something, for example "Hi!"
+* Check bot API. From Raspberry Pi send (put correct token there)
 ```
 curl -s "https://api.telegram.org/bot<Telegram_bot_token>/getUpdates"
 
@@ -146,7 +148,7 @@ it should return JSON like:
 ```
 copy and save id (it is chat ID).
 
-4. update script in ~/ngrok-log.sh
+* update script in ~/ngrok-log.sh
 ```
 #!/bin/bash
 
@@ -174,11 +176,11 @@ exit 1
 ```
 be sure it is executable `chmod +x ~/ngrok-log.sh`
 
-5. Reboot. You will receive ssh address in telegram bot.
+* Reboot. You will receive ssh address in telegram bot.
 
 ## WEB Camera
 
-1. Prerequisites
+### Prerequisites
 next packages should be installed on system level with sudo apt install to support basic operation
 (just WEB camera without object detection - file camera_server.py):
 * python3-flask,
@@ -191,7 +193,7 @@ next packages should be installed on system level with sudo apt install to suppo
 * libjpeg62-turbo-dev,
 * python3-opencv
 
-2. Add a new tunnel to ~/.config/ngrok/ngrok.yml for camera:
+### Add a new tunnel to ~/.config/ngrok/ngrok.yml for camera:
 ```
 version: "2"
 authtoken: 2zB3cCsYQfHqJmkZEbr2cegRi0q_7YnR6wssLLzPcaC8dH2Q6
@@ -208,7 +210,7 @@ Thr changes will be applied afrer reboot or on manual restart of service:
 ```
 sudo systemctl restart ngrok-all.service
 ```
-3. Update ngrok-log.sh, so it will extract and send to telegram both, ssh and camera addresses:
+### Update ngrok-log.sh, so it will extract and send to telegram both, ssh and camera addresses:
 ```
 #!/bin/bash
 
@@ -255,24 +257,25 @@ echo "Failed to retrieve ngrok tunnels" > ~/ngrok-fail.log
 ```
  Now on reboot Raspberry starts ngrok-all.service, so tunnels will be created, then runs ngrok-log.service which extracts tunneled addresses and sends addresses to telegram bot:
 
- ![Telegram bot message example](img/telegram_bot_msg.JPG "Telegram bot message example")
+ <img src="img/telegram_bot_msg.JPG" alt="Telegram bot message example" width="300">
 
-4. use addresses from the message to access ssh:
-![ssh via ngrok tunnel](img/ssh.JPG "ssh via ngrok tunnel")
+### use addresses from the message to access ssh:
+ <img src="img/ssh.JPG" alt="ssh via ngrok tunnel" width="500">
 
-5. and start camera_server.py with flask:
+### and start camera_server.py with flask:
 
 ```
 python camera_server.py
 ```
-![camera server](img/flask_started.JPG "camera server run by flask")
+<img src="img/flask_started.JPG" alt="camera server run by flask" width="500">
 
 now you can see camera striming not only in local network on http://192.168.100.21:5000 but also to internet by address in telegram message via ngrok service:
 
-![ngrok](img/ngrok-cam1.JPG "ngrok")
-![ngrok](img/ngrok-cam2.JPG "ngrok")
+<img src="img/ngrok-cam1.JPG" alt="ngrok" width="500">
+<img src="img/ngrok-cam2.JPG" alt="via ngrok" width="500">
 
-## Object detection
+
+# Simple Object detection
 Rerequisites:
 
 * ultralytics is cloned from here https://github.com/ultralytics/ultralytics.git .
@@ -286,4 +289,47 @@ than I have copied *yolov5n_ncnn_model* folder to this repo, now `model = YOLO("
 ```
 python detector.py
 ```
-![detected](img/detected2.JPG "detected")
+<img src="img/detected2.JPG" alt="detected" width="500">
+
+It is still accessible from intenet via ngrok
+Despite using optimised YOLO model in ncnn format objects detection on one frame takes about 2 secs, so I limit FPS to 0.33
+
+# Optimisation
+If we do not interesting in static objects and wish to detect only new object apeared in our view we blessed with oportunity of optimise our hardware usage.
+
+## Preprocessing
+OpenCV will be used.
+
+Idea is compare curent frame and prevoius frame
+
+<img src="img/2_initial.jpg" alt="initial frames" width="600">
+
+but we should avoid triggering on small fast moving objects like trees leaves and changing of brithess. For this we will convert images to black and white and blure it
+
+<img src="img/2_wb_blure.jpg" alt="BW_blured" width="600">
+
+and only after that calculae difference
+
+<img src="img/diff.JPG" alt="difference" width="500">
+
+apply threshold to get only significant changed zones of immage
+
+<img src="img/threshhold.JPG" alt="thresholded" width="500">
+
+than calculate boxes around zones of interest
+
+<img src="img/boxes.jpg" alt="boxes" width="500">
+
+if distance between some boxes is relatively small persumably this is one object so as additional step grop boxes
+
+<img src="img/joined_boxes.jpg" alt="joined boxes" width="500">
+
+I plan to pass to object detection model only part of image where changes occured, but context ( area around object) significantly improves effisiency of object detection model, so I add some margine around area of interest
+
+<img src="img/margin_box.jpg" alt="boxes with margin" width="500">
+
+## Detection
+pass to model only part of original image limited by the box.
+Result of object detection:
+
+<img src="img/detected.JPG" alt="detected" width="500">
