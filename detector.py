@@ -15,27 +15,27 @@ config = camera.create_video_configuration(main={"size": (960, 960), "format": "
 camera.configure(config)
 
 # model = YOLO("yolov5n.pt")
-model = YOLO("yolov5nu_ncnn_model_960")
-object_counts = {}
+model = YOLO("yolov5nu_ncnn_model_960") # ncnn model optimized for RPi
 
+object_counts = {}
 active_connections = 0
 lock = threading.Lock()
 
 # Thread communication variables
 raw_frame_queue = Queue(maxsize=1)       # Passes raw frames to YOLO thread
 encoded_frame_pool = {"bytes": None}     # Stores the latest processed JPEG
-frame_ready = threading.Event()
-camera_active = threading.Event()
-client_queues = deque()
+frame_ready = threading.Event()          # Signal that a new frame is ready to broadcast
+camera_active = threading.Event()        # Signal that at least one client is connected
+client_queues = deque()                  # List of queues, one per connected client
 
 def camera_thread_func():
     """Background thread: Captures frames at a constant rate without waiting for YOLO"""
     while True:
-        camera_active.wait()
+        camera_active.wait()            # Wait until a client connects (pauses capture when idle)
         start_time = time.time()
         
         try:
-            frame = camera.capture_array()
+            frame = camera.capture_array()  # Grabs one frame from the camera
 
             # If the image has 4 channels (BGRA/XBGR), slice it to 3 channels (BGR)
             if frame.shape[2] == 4:
@@ -44,15 +44,14 @@ def camera_thread_func():
             
             # Non-blocking push to YOLO thread; drops frame if YOLO is still busy
             try:
-                raw_frame_queue.put_nowait(frame)
+                raw_frame_queue.put_nowait(frame)   # If YOLO is still processing the previous frame, this frame is dropped (doesn't wait)
             except:
                 pass
                 
         except Exception as e:
             print(f"Capture error: {e}")
-            
-        # Maintain ~0.33 FPS capture rate limit
-        delay = 3 - (time.time() - start_time)
+                    
+        delay = 3 - (time.time() - start_time)  # Maintain ~0.33 FPS capture rate limit
         if delay > 0:
             time.sleep(delay)
 
@@ -62,12 +61,18 @@ def yolo_worker_func():
     while True:
         frame = raw_frame_queue.get()  # Blocks until a new frame arrives
         try:
-
             # detection classes: 0 = person, 1 = bicycle, 2 = car, 3 = motorcycle, 16 = dog, 25 = umbrella. 
-            # For save resourses swith augmentaton off and process only objects with confidention score > 
-            results = model(frame, classes=[0, 25], imgsz=960, augment=True, conf=0.4)[0]
-            
+            results = model(frame, classes=[0, 25], imgsz=960, augment=False, conf=0.4)[0]
+            # results.orig_img — Original input frame
+            # results.names — Dictionary mapping class IDs to names
+            # results.boxes — Bounding boxes object (contains detections)
             for box in results.boxes:
+                # box.data  [x0, y0, x1, y1, confidence, class ID]
+                # box.xyxy	Bounding box coordinates [x1, y1, x2, y2]
+                # box.conf	Confidence score (0-1). An array with 1 element
+                # box.cls	Class ID (person=0, umbrella=25). An array with 1 element
+                # box.xywh	Center coords + width/height [cx, cy, w, h]
+
                 cls_id = int(box.cls[0])
                 label = model.names[cls_id]
                 with lock:

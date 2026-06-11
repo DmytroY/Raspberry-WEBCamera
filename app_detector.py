@@ -38,8 +38,7 @@ class VideoDetector:
             start_time = time.time()
             try:
                 frame = self.camera.capture_array()
-                if frame.shape[2] == 4:
-                    frame = frame[:, :, :3]
+
                 try:
                     self.raw_frame_queue.put_nowait(frame)
                 except:
