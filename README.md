@@ -328,8 +328,19 @@ I plan to pass to object detection model only part of image where changes occure
 
 <img src="img/margin_box.jpg" alt="boxes with margin" width="500">
 
-## Detection
+## Fast Detection
 pass to model only part of original image limited by the box.
+```
+python detector_fast.py
+```
 Result of object detection:
 
 <img src="img/detected.JPG" alt="detected" width="500">
+
+With this approach, we significantly save compute resources:
+1. We detect changes quickly with OpenCV and skip using the neural network if no changes happened.
+2. We use a smaller dimension yolov5nu_ncnn_model_320 model on the limited area.
+
+As a result, inference time decreased from more than 2s to less than 300ms, so we can maintain 3 fps, or 2 fps if we want to be safe.
+
+<img src="img/top.JPG" alt="Raspbery pefrormance" width="600">
