@@ -142,6 +142,9 @@ def generate():
         client_queues.append(client_queue)
         if active_connections == 1:
             camera.start()
+            camera.set_controls({
+                "FrameDurationLimits": (33333, 100000)                    # Allow longer shutter speeds if it gets pitch black
+            })
             camera_active.set()
     try:
         while True:
