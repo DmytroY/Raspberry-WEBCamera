@@ -11,8 +11,7 @@ app = Flask(__name__)
 camera = Picamera2()
 
 # config = camera.create_video_configuration(main={"size": (640, 640), "format": "RGB888"}) 
-# config = camera.create_video_configuration(main={"size": (960, 960), "format": "RGB888"})
-config = camera.create_video_configuration(main={"size": (1280, 720), "format": "RGB888"}) 
+config = camera.create_video_configuration(main={"size": (1024, 960), "format": "RGB888"}) 
 camera.configure(config)
 
 # model = YOLO("yolov5n.pt")
