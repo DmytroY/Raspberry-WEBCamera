@@ -1,6 +1,7 @@
 import time
 from flask import Flask, Response, render_template_string
 from picamera2 import Picamera2
+from helpers import to_small_gray, find_motion_roi
 import cv2
 import threading
 from queue import Queue, Empty
@@ -15,7 +16,7 @@ config = camera.create_video_configuration(main={"size": (1024, 960), "format": 
 camera.configure(config)
 
 # model = YOLO("yolov5n.pt")
-model = YOLO("yolov5nu_ncnn_model_960") # ncnn model optimized for RPi
+model = YOLO("yolov5nu_ncnn_model_320") # ncnn model optimized for RPi
 
 object_counts = {}
 active_connections = 0
@@ -27,6 +28,13 @@ encoded_frame_pool = {"bytes": None}     # Stores the latest processed JPEG
 frame_ready = threading.Event()          # Signal that a new frame is ready to broadcast
 camera_active = threading.Event()        # Signal that at least one client is connected
 client_queues = deque()                  # List of queues, one per connected client
+
+def publish(image):
+    ret, buffer = cv2.imencode('.jpg', image, [cv2.IMWRITE_JPEG_QUALITY, 50])
+    if ret:
+        with lock:
+            encoded_frame_pool["bytes"] = buffer.tobytes()
+        frame_ready.set()
 
 def camera_thread_func():
     """Background thread: Captures frames at a constant rate without waiting for YOLO"""
@@ -58,11 +66,36 @@ def camera_thread_func():
 def yolo_worker_func():
     """Background thread: Processes the latest available frame from the queue"""
     global object_counts
+    prev_small = None
+    frames_since_full = 0
+
     while True:
         frame = raw_frame_queue.get()  # Blocks until a new frame arrives
         try:
+            h, w = frame.shape[:2]
+            small = to_small_gray(frame)
+
+            # Decide which region to run YOLO on
+            full_scan = prev_small is None or frames_since_full >= FULL_SCAN_EVERY
+
+            if full_scan:
+                roi = (0, 0, w, h)
+                frames_since_full = 0
+            else:
+                roi = find_motion_roi(prev_small, small, w, h)
+                frames_since_full += 1
+
+            prev_small = small   # always update, even when YOLO is skipped
+
+            if roi is None:
+                publish(frame)   # no motion: send plain frame, skip YOLO
+                continue
+
+            x0, y0, x1, y1 = roi
+            crop = frame[y0:y1, x0:x1]
+
             # detection classes: 0 = person, 1 = bicycle, 2 = car, 3 = motorcycle, 16 = dog, 25 = umbrella. 
-            results = model(frame, classes=[0, 25], imgsz=960, augment=False, conf=0.4)[0]
+            results = model(crop, classes=[0, 25], imgsz=960, augment=False, conf=0.4)[0]
             # results.orig_img — Original input frame
             # results.names — Dictionary mapping class IDs to names
             # results.boxes — Bounding boxes object (contains detections)
@@ -77,15 +110,15 @@ def yolo_worker_func():
                 label = model.names[cls_id]
                 with lock:
                     object_counts[label] = object_counts.get(label, 0) + 1
+
             
-            annotated_frame = results.plot()
-            ret, buffer = cv2.imencode('.jpg', annotated_frame, [cv2.IMWRITE_JPEG_QUALITY, 50])
-            
-            if ret:
-                frame_bytes = buffer.tobytes()
-                with lock:
-                    encoded_frame_pool["bytes"] = frame_bytes
-                frame_ready.set()
+            # Paste the annotated crop back into the full frame
+            annotated = frame.copy()
+            annotated[y0:y1, x0:x1] = results.plot()
+            if not full_scan:
+                cv2.rectangle(annotated, (x0, y0), (x1, y1), (255, 255, 255), 1)
+
+            publish(annotated)
                 
         except Exception as e:
             print(f"YOLO error: {e}")
