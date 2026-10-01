@@ -59,7 +59,7 @@ def camera_thread_func():
         except Exception as e:
             print(f"Capture error: {e}")
                     
-        delay = 3 - (time.time() - start_time)  # Maintain ~0.33 FPS capture rate limit
+        delay = 0.5 - (time.time() - start_time)  # Maintain ~2 FPS capture rate limit
         if delay > 0:
             time.sleep(delay)
 
