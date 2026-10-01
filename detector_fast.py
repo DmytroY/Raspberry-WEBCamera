@@ -1,7 +1,7 @@
 import time
 from flask import Flask, Response, render_template_string
 from picamera2 import Picamera2
-from helpers import to_small_gray, find_motion_roi, FULL_SCAN_EVERY
+from helpers import to_small_gray, find_motion_roi
 import cv2
 import threading
 from queue import Queue, Empty
@@ -67,24 +67,13 @@ def yolo_worker_func():
     """Background thread: Processes the latest available frame from the queue"""
     global object_counts
     prev_small = None
-    frames_since_full = 0
 
     while True:
         frame = raw_frame_queue.get()  # Blocks until a new frame arrives
         try:
             h, w = frame.shape[:2]
             small = to_small_gray(frame)
-
-            # Decide which region to run YOLO on
-            full_scan = prev_small is None or frames_since_full >= FULL_SCAN_EVERY
-
-            if full_scan:
-                roi = (0, 0, w, h)
-                frames_since_full = 0
-            else:
-                roi = find_motion_roi(prev_small, small, w, h)
-                frames_since_full += 1
-
+            roi = find_motion_roi(prev_small, small, w, h)
             prev_small = small   # always update, even when YOLO is skipped
 
             if roi is None:
@@ -110,14 +99,11 @@ def yolo_worker_func():
                 label = model.names[cls_id]
                 with lock:
                     object_counts[label] = object_counts.get(label, 0) + 1
-
             
             # Paste the annotated crop back into the full frame
             annotated = frame.copy()
             annotated[y0:y1, x0:x1] = results.plot()
-            if not full_scan:
-                cv2.rectangle(annotated, (x0, y0), (x1, y1), (255, 255, 255), 1)
-
+            cv2.rectangle(annotated, (x0, y0), (x1, y1), (255, 255, 255), 1)
             publish(annotated)
                 
         except Exception as e:

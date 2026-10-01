@@ -6,7 +6,6 @@ BLUR = 9                   # smaller kernel because the image is smaller
 DIFF_THRESHOLD = 30
 MARGIN = 60                # in full-resolution pixels
 MIN_MOTION_PIXELS = 20     # ignore noise below this (in downscaled pixels)
-FULL_SCAN_EVERY = 10       # force a full-frame detection every N frames
 
 def to_small_gray(frame):
     small = cv2.resize(frame, None, fx=SCALE, fy=SCALE, interpolation=cv2.INTER_AREA)
