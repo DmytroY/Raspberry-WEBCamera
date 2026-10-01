@@ -59,7 +59,7 @@ def camera_thread_func():
         except Exception as e:
             print(f"Capture error: {e}")
                     
-        delay = 0.5 - (time.time() - start_time)  # Maintain ~2 FPS capture rate limit
+        delay = 0.6 - (time.time() - start_time)  # Maintain ~1.8 FPS capture rate limit
         if delay > 0:
             time.sleep(delay)
 
@@ -91,7 +91,8 @@ def yolo_worker_func():
             crop = frame[y0:y1, x0:x1]
 
             # detection classes: 0 = person, 1 = bicycle, 2 = car, 3 = motorcycle, 16 = dog, 25 = umbrella. 
-            results = model(crop, classes=[0, 25], imgsz=960, augment=False, conf=0.4)[0]
+            #results = model(crop, classes=[0, 25], imgsz=960, augment=False, conf=0.4)[0]
+            results = model(crop, imgsz=320, augment=False, conf=0.2)[0]
             # results.orig_img — Original input frame
             # results.names — Dictionary mapping class IDs to names
             # results.boxes — Bounding boxes object (contains detections)
@@ -143,7 +144,7 @@ def generate():
         if active_connections == 1:
             camera.start()
             camera.set_controls({
-                "FrameDurationLimits": (33333, 100000)                    # Allow longer shutter speeds if it gets pitch black
+                "FrameDurationLimits": (33333, 100000) # Allow longer shutter speeds if it gets pitch black
             })
             camera_active.set()
     try:
