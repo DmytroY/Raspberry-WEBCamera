@@ -59,7 +59,7 @@ def camera_thread_func():
         except Exception as e:
             print(f"Capture error: {e}")
                     
-        delay = 0.6 - (time.time() - start_time)  # Maintain ~1.8 FPS capture rate limit
+        delay = 0.5 - (time.time() - start_time)  # Maintain 2 FPS capture rate limit
         if delay > 0:
             time.sleep(delay)
 
@@ -92,7 +92,7 @@ def yolo_worker_func():
 
             # detection classes: 0 = person, 1 = bicycle, 2 = car, 3 = motorcycle, 16 = dog, 25 = umbrella. 
             #results = model(crop, classes=[0, 25], imgsz=960, augment=False, conf=0.4)[0]
-            results = model(crop, imgsz=320, augment=False, conf=0.2)[0]
+            results = model(crop, imgsz=320, augment=False, conf=0.3)[0]
             # results.orig_img — Original input frame
             # results.names — Dictionary mapping class IDs to names
             # results.boxes — Bounding boxes object (contains detections)
@@ -180,7 +180,7 @@ def index():
           <head><title>Pi Camera</title></head>
           <body>
             <h1>Camera Stream</h1>
-            <img src="{{ url_for('video_feed') }}" width="960" height="960" />
+            <img src="{{ url_for('video_feed') }}" width="1024" height="960" />
           </body>
         </html>
     """)
