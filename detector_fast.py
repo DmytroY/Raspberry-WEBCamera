@@ -12,7 +12,7 @@ app = Flask(__name__)
 camera = Picamera2()
 
 # config = camera.create_video_configuration(main={"size": (640, 640), "format": "RGB888"}) 
-config = camera.create_video_configuration(main={"size": (1024, 960), "format": "RGB888"}) 
+config = camera.create_video_configuration(main={"size": (1280, 720), "format": "RGB888"}) 
 camera.configure(config)
 
 # model = YOLO("yolov5n.pt")
@@ -180,7 +180,7 @@ def index():
           <head><title>Pi Camera</title></head>
           <body>
             <h1>Camera Stream</h1>
-            <img src="{{ url_for('video_feed') }}" width="1024" height="960" />
+            <img src="{{ url_for('video_feed') }}" width="1280" height="720" />
           </body>
         </html>
     """)
