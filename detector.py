@@ -10,6 +10,7 @@ from ultralytics import YOLO
 app = Flask(__name__)
 camera = Picamera2()
 
+# do not forget change resolution in html template in def index()
 # config = camera.create_video_configuration(main={"size": (640, 640), "format": "RGB888"}) 
 # config = camera.create_video_configuration(main={"size": (960, 960), "format": "RGB888"})
 config = camera.create_video_configuration(main={"size": (1280, 720), "format": "RGB888"}) 
@@ -151,7 +152,7 @@ def index():
           <head><title>Pi Camera</title></head>
           <body>
             <h1>Camera Stream</h1>
-            <img src="{{ url_for('video_feed') }}" width="960" height="960" />
+            <img src="{{ url_for('video_feed') }}" width="1280" height="720" />
           </body>
         </html>
     """)
