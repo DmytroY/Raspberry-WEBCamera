@@ -335,7 +335,7 @@ python detector_fast.py
 ```
 Result of object detection:
 
-<img src="img/detected.JPG" alt="detected" width="500">
+<img src="img/detected.JPG" alt="detected" width="600">
 
 With this approach, we significantly save compute resources:
 1. We detect changes quickly with OpenCV and skip using the neural network if no changes happened.
