@@ -73,6 +73,13 @@ def yolo_worker_func():
         try:
             h, w = frame.shape[:2]
             small = to_small_gray(frame)
+
+            # First frame: nothing to compare with yet
+            if prev_small is None:
+                prev_small = small
+                publish(frame)
+                continue
+
             roi = find_motion_roi(prev_small, small, w, h)
             prev_small = small   # always update, even when YOLO is skipped
 
