@@ -1,7 +1,7 @@
 import time
 from flask import Flask, Response, render_template_string
 from picamera2 import Picamera2
-from helpers import to_small_gray, find_motion_roi
+from helpers import to_small_gray, find_motion_roi, FULL_SCAN_EVERY
 import cv2
 import threading
 from queue import Queue, Empty
